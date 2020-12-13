@@ -1,7 +1,6 @@
 package adblockr
 
 import (
-	"bufio"
 	"github.com/gobwas/glob"
 	"strings"
 	"sync"
@@ -86,27 +85,15 @@ func (m *MemDomainBucket) Update(uri string) (int, error) {
 	}
 	defer r.Close()
 
-	count := 0
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		line := scanner.Text()
-		line = strings.Split(line, "#")[0]
-		line = strings.TrimSpace(line)
-
-		if len(line) > 0 {
-			fields := strings.Fields(line)
-			if len(fields) > 1 {
-				line = fields[1]
-			} else {
-				line = fields[0]
-			}
-			if err := m.putNoLock(line, true); err == nil {
-				count++
-			}
+	var count int
+	count, err = ParseLine(r, func(line string) bool {
+		if err := m.putNoLock(line, true); err == nil {
+			return true
 		}
-	}
+		return false
+	})
 
-	if err := scanner.Err(); err != nil {
+	if err != nil {
 		return 0, err
 	}
 
