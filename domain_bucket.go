@@ -11,7 +11,7 @@ import (
 
 const globChars = "*?[]"
 
-type DomainStore interface {
+type DomainBucket interface {
 	Put(key string, value bool) error
 	Has(domain string) bool
 	Forget(key string)

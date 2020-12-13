@@ -7,62 +7,60 @@ import (
 	"sync"
 )
 
-func NewMemDomainStore() DomainStore {
-	return &MemDomainStore{
-		backend: make(map[string]bool),
-		special: make(map[string]glob.Glob),
-		mu:      sync.RWMutex{},
+func NewMemDomainBucket() DomainBucket {
+	return &MemDomainBucket{
+		domains:  make(map[string]bool),
+		patterns: make(map[string]glob.Glob),
+		mu:       sync.RWMutex{},
 	}
 }
 
-type MemDomainStore struct {
-	backend map[string]bool
-	special map[string]glob.Glob
-	mu      sync.RWMutex
+type MemDomainBucket struct {
+	domains  map[string]bool
+	patterns map[string]glob.Glob
+	mu       sync.RWMutex
 }
 
-func (m *MemDomainStore) Put(key string, value bool) error {
+func (m *MemDomainBucket) Put(key string, value bool) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	key = strings.ToLower(key)
 	if strings.ContainsAny(key, globChars) {
 		g, err := glob.Compile(key)
 		if err != nil {
 			return err
 		}
-		m.special[key] = g
+		m.patterns[key] = g
 	} else {
-		m.backend[key] = value
+		m.domains[strings.ToLower(key)] = value
 	}
 	return nil
 }
 
-func (m *MemDomainStore) putNoLock(key string, value bool) error {
-	key = strings.ToLower(key)
+func (m *MemDomainBucket) putNoLock(key string, value bool) error {
 	if strings.ContainsAny(key, globChars) {
 		g, err := glob.Compile(key)
 		if err != nil {
 			return err
 		}
-		m.special[key] = g
+		m.patterns[key] = g
 	} else {
-		m.backend[key] = value
+		m.domains[strings.ToLower(key)] = value
 	}
 	return nil
 }
 
-func (m *MemDomainStore) Has(domain string) bool {
+func (m *MemDomainBucket) Has(domain string) bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	domain = strings.ToLower(domain)
-	_, ok := m.backend[domain]
+	_, ok := m.domains[domain]
 	if ok {
 		return true
 	}
 
-	for _, g := range m.special {
+	for _, g := range m.patterns {
 		if g.Match(domain) {
 			return true
 		}
@@ -70,19 +68,18 @@ func (m *MemDomainStore) Has(domain string) bool {
 	return false
 }
 
-func (m *MemDomainStore) Forget(key string) {
+func (m *MemDomainBucket) Forget(key string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	key = strings.ToLower(key)
 	if strings.ContainsAny(key, globChars) {
-		delete(m.special, key)
+		delete(m.patterns, key)
 	} else {
-		delete(m.backend, key)
+		delete(m.domains, strings.ToLower(key))
 	}
 }
 
-func (m *MemDomainStore) Update(uri string) (int, error) {
+func (m *MemDomainBucket) Update(uri string) (int, error) {
 	r, err := getDomainResource(uri)
 	if err != nil {
 		return 0, err
@@ -110,7 +107,7 @@ func (m *MemDomainStore) Update(uri string) (int, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return 0, nil
+		return 0, err
 	}
 
 	return count, nil

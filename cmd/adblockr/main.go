@@ -63,7 +63,7 @@ func init() {
 	rootCmd.MarkPersistentFlagRequired("config")
 	rootCmd.PersistentFlags().IntVarP(&intervalMs, "interval", "i", intervalMs, "DNS resolver interval (ms)")
 	rootCmd.PersistentFlags().IntVarP(&timeoutSecs, "timeout", "t", timeoutSecs, "DNS resolver timeout (seconds)")
-	rootCmd.PersistentFlags().StringVar(&createDb, "create-db", "", "Initialize blacklist database (path)")
+	rootCmd.PersistentFlags().StringVar(&createDb, "create-db", "", "Initialize blacklist database file (path)")
 }
 
 func main() {
@@ -72,8 +72,8 @@ func main() {
 	}
 }
 
-func initDomainStore(sourceUri []string, store adblockr.DomainStore) {
-	log.Info("initializing blacklist database, may take a while...")
+func initDomainStore(sourceUri []string, store adblockr.DomainBucket) {
+	log.Info("initializing blacklist data, may take a while...")
 
 	total := 0
 	source := 0
@@ -90,7 +90,7 @@ func initDomainStore(sourceUri []string, store adblockr.DomainStore) {
 		total = total + count
 	}
 
-	log.WithFields(log.Fields{"total": total, "source": source}).Info("blacklist database initialized")
+	log.WithFields(log.Fields{"total": total, "source": source}).Info("blacklist data initialized")
 }
 
 func runCreateDb() {
@@ -100,7 +100,7 @@ func runCreateDb() {
 		os.Exit(1)
 	}
 
-	blacklist := adblockr.NewDbDomainStore().(*adblockr.DbDomainStore)
+	blacklist := adblockr.NewDbDomainBucket().(*adblockr.DbDomainBucket)
 	if err := blacklist.Open(createDb); err != nil {
 		logCtx.WithError(err).Error("error opening database")
 		os.Exit(1)
@@ -110,23 +110,22 @@ func runCreateDb() {
 }
 
 func runServer() {
-	log.Info("starting adblockr server")
-	var blacklist adblockr.DomainStore
+	var blacklist adblockr.DomainBucket
 	var init = false
 
 	if config.DbFile == "" {
+		log.Info("starting DNS proxy with ad filter (using in-memory backend)")
 		init = true
-		blacklist = adblockr.NewMemDomainStore()
-		log.Info("using mem store")
+		blacklist = adblockr.NewMemDomainBucket()
 	} else {
+		log.WithField("file", config.DbFile).Info("starting DNS proxy with ad filter (using db backend)")
 		init = !fileExists(config.DbFile)
-		log.WithField("file", config.DbFile).Info("using db store")
-		blacklist = adblockr.NewDbDomainStore()
-		if err := blacklist.(*adblockr.DbDomainStore).Open(config.DbFile); err != nil {
+		blacklist = adblockr.NewDbDomainBucket()
+		if err := blacklist.(*adblockr.DbDomainBucket).Open(config.DbFile); err != nil {
 			log.WithField("file", config.DbFile).WithError(err).Error("unable to open database")
 			os.Exit(1)
 		}
-		defer blacklist.(*adblockr.DbDomainStore).Close()
+		defer blacklist.(*adblockr.DbDomainBucket).Close()
 	}
 	if init {
 		initDomainStore(config.Blacklist, blacklist)

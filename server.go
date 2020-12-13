@@ -33,13 +33,13 @@ type Server struct {
 	writeTimeout time.Duration
 	requestChan  chan dnsRequest
 	quit         chan struct{}
-	blacklist    DomainStore
+	blacklist    DomainBucket
 	resolver     Resolver
 	tcpServer    *dns.Server
 	udpServer    *dns.Server
 }
 
-func NewServer(address string, resolver Resolver, blacklist DomainStore) *Server {
+func NewServer(address string, resolver Resolver, blacklist DomainBucket) *Server {
 	timeout := 3 * time.Second
 
 	srv := &Server{
