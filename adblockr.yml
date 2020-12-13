@@ -1,0 +1,12 @@
+listen_address: "127.0.0.1:5300"
+
+nameservers:
+  - "172.16.8.8:53"
+  - "1.1.1.1:53"
+
+blacklist:
+#  - https://justdomains.github.io/blocklists/lists/easylist-justdomains.txt
+#  - https://justdomains.github.io/blocklists/lists/easyprivacy-justdomains.txt
+  - https://justdomains.github.io/blocklists/lists/nocoin-justdomains.txt
+
+db_file: /Users/frengky/GolandProjects/learn-go/adblock.db
