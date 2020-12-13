@@ -19,14 +19,9 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e1250cdd-e49d-4bc9-8529-cdada728d1a6" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/db_domain_bucket.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/adblockr.yml" beforeDir="false" afterPath="$PROJECT_DIR$/adblockr.yml" afterDir="false" />
+    <list default="true" id="e1250cdd-e49d-4bc9-8529-cdada728d1a6" name="Default Changelist" comment="refactoring">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmd/adblockr/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/adblockr/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db_domain_store.go" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/domain_store.go" beforeDir="false" afterPath="$PROJECT_DIR$/domain_bucket.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mem_domain_store.go" beforeDir="false" afterPath="$PROJECT_DIR$/mem_domain_bucket.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/server.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -68,7 +63,17 @@
       </map>
     </option>
   </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="refactoring" />
+    <option name="LAST_COMMIT_MESSAGE" value="refactoring" />
+  </component>
   <component name="VgoProject">
     <integration-enabled>true</integration-enabled>
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="560" y="266" key="Vcs.Push.Dialog.v2" timestamp="1607824766222">
+      <screen x="0" y="25" width="1920" height="1009" />
+    </state>
+    <state x="560" y="266" key="Vcs.Push.Dialog.v2/0.25.1920.1009@0.25.1920.1009" timestamp="1607824766222" />
   </component>
 </project>

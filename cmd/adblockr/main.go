@@ -23,47 +23,70 @@ var (
 	configFlag  = "adblockr.yml"
 	intervalMs  = 800
 	timeoutSecs = 5
-	createDb    string
+	dbFlag      = "adblockr.db"
+	verbose     = false
 
 	rootCmd = &cobra.Command{
 		Use:   "adblockr",
-		Short: "DNS proxy with ad filter",
-		Long:  "DNS proxy with ad filter written in Go",
+		Short: "High performance DNS proxy with ad filter",
+		Long:  "High performance DNS proxy with ad filter written in Go",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			logCtx := log.WithField("config", configFlag)
 
-			f, err := os.Open(configFlag)
-			if err != nil {
-				logCtx.WithError(err).Error("unable to open configuration file")
-				os.Exit(1)
-			}
-			defer f.Close()
-
-			decoder := yaml.NewDecoder(f)
-			err = decoder.Decode(config)
-			if err != nil {
-				logCtx.WithError(err).Error("invalid configuration file format")
-				os.Exit(1)
-			}
 		},
+	}
+
+	serveCmd = &cobra.Command{
+		Use:   "serve",
+		Short: "Start DNS proxy server",
+		Long:  "Start DNS proxy server",
 		Run: func(cmd *cobra.Command, args []string) {
-			if createDb != "" {
-				runCreateDb()
-			} else {
-				runServer()
-			}
+			runServe()
+		},
+	}
+
+	initDbCmd = &cobra.Command{
+		Use:   "init-db",
+		Short: "Initialize blacklist database file",
+		Long:  "Initialize blacklist database file",
+		Run: func(cmd *cobra.Command, args []string) {
+			runInitDb()
 		},
 	}
 )
 
 func init() {
-	log.SetLevel(log.DebugLevel)
+	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVarP(&configFlag, "config", "c", "adblockr.yml", "Path to configuration file")
-	rootCmd.MarkPersistentFlagRequired("config")
-	rootCmd.PersistentFlags().IntVarP(&intervalMs, "interval", "i", intervalMs, "DNS resolver interval (ms)")
-	rootCmd.PersistentFlags().IntVarP(&timeoutSecs, "timeout", "t", timeoutSecs, "DNS resolver timeout (seconds)")
-	rootCmd.PersistentFlags().StringVar(&createDb, "create-db", "", "Initialize blacklist database file (path)")
+	serveCmd.Flags().IntVarP(&intervalMs, "interval", "i", intervalMs, "DNS resolver interval (ms)")
+	serveCmd.Flags().IntVarP(&timeoutSecs, "timeout", "t", timeoutSecs, "DNS resolver timeout (seconds)")
+
+	initDbCmd.Flags().StringVarP(&dbFlag, "file", "f", dbFlag, "Path to database file")
+
+	rootCmd.PersistentFlags().StringVarP(&configFlag, "config", "c", configFlag, "Path to configuration file")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", verbose, "Verbose output")
+	rootCmd.AddCommand(serveCmd, initDbCmd)
+}
+
+func initConfig() {
+	if verbose {
+		log.SetLevel(log.DebugLevel)
+	}
+
+	logCtx := log.WithField("config", configFlag)
+
+	f, err := os.Open(configFlag)
+	if err != nil {
+		logCtx.WithError(err).Error("unable to open configuration file")
+		os.Exit(1)
+	}
+	defer f.Close()
+
+	decoder := yaml.NewDecoder(f)
+	err = decoder.Decode(config)
+	if err != nil {
+		logCtx.WithError(err).Error("invalid configuration file format")
+		os.Exit(1)
+	}
 }
 
 func main() {
@@ -72,7 +95,7 @@ func main() {
 	}
 }
 
-func initDomainStore(sourceUri []string, store adblockr.DomainBucket) {
+func initDomainBucket(sourceUri []string, store adblockr.DomainBucket) {
 	log.Info("initializing blacklist data, may take a while...")
 
 	total := 0
@@ -93,23 +116,23 @@ func initDomainStore(sourceUri []string, store adblockr.DomainBucket) {
 	log.WithFields(log.Fields{"total": total, "source": source}).Info("blacklist data initialized")
 }
 
-func runCreateDb() {
-	logCtx := log.WithField("file", createDb)
-	if fileExists(createDb) {
+func runInitDb() {
+	logCtx := log.WithField("file", dbFlag)
+	if fileExists(dbFlag) {
 		logCtx.Error("file already exists, aborting")
 		os.Exit(1)
 	}
 
 	blacklist := adblockr.NewDbDomainBucket().(*adblockr.DbDomainBucket)
-	if err := blacklist.Open(createDb); err != nil {
+	if err := blacklist.Open(dbFlag); err != nil {
 		logCtx.WithError(err).Error("error opening database")
 		os.Exit(1)
 	}
 	defer blacklist.Close()
-	initDomainStore(config.Blacklist, blacklist)
+	initDomainBucket(config.Blacklist, blacklist)
 }
 
-func runServer() {
+func runServe() {
 	var blacklist adblockr.DomainBucket
 	var init = false
 
@@ -128,7 +151,7 @@ func runServer() {
 		defer blacklist.(*adblockr.DbDomainBucket).Close()
 	}
 	if init {
-		initDomainStore(config.Blacklist, blacklist)
+		initDomainBucket(config.Blacklist, blacklist)
 	}
 
 	var wg sync.WaitGroup
