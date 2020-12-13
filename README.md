@@ -30,9 +30,8 @@ nameservers:
   
 # List of blacklist source uri, format: https://some/blacklist.txt or file:///local/path/file.txt  
 blacklist_sources:  
-  - https://justdomains.github.io/blocklists/lists/easylist-justdomains.txt  
-  - https://justdomains.github.io/blocklists/lists/easyprivacy-justdomains.txt  
-  - https://v.firebog.net/hosts/Easyprivacy.txt  
+  - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+  - https://mirror1.malwaredomains.com/files/justdomains
   
 # List of whitelisted domains, format: some.domain.com or *.domain.com  
 whitelist_domains:  

@@ -9,9 +9,19 @@ nameservers:
 
 # List of blacklist source uri, format: https://some/blacklist.txt or file:///local/path/file.txt
 blacklist_sources:
-  - https://justdomains.github.io/blocklists/lists/easylist-justdomains.txt
-  - https://justdomains.github.io/blocklists/lists/easyprivacy-justdomains.txt
+  - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+  - https://mirror1.malwaredomains.com/files/justdomains
+  - https://adaway.org/hosts.txt
+  - https://v.firebog.net/hosts/AdguardDNS.txt
   - https://v.firebog.net/hosts/Easyprivacy.txt
+  - https://v.firebog.net/hosts/Easylist.txt
+  - https://v.firebog.net/hosts/Shalla-mal.txt
+  - https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=0&mimetype=plaintext
+  - https://raw.githubusercontent.com/bigdargon/hostsVN/master/hosts
+  - https://raw.githubusercontent.com/jdlingyu/ad-wars/master/hosts
+  - https://gitlab.com/quidsup/notrack-blocklists/raw/master/notrack-blocklist.txt
+  - https://gitlab.com/quidsup/notrack-blocklists/raw/master/notrack-malware.txt
+  - https://s3.amazonaws.com/lists.disconnect.me/simple_ad.txt
 
 # List of whitelisted domains, format: some.domain.com or *.domain.com
 whitelist_domains:
