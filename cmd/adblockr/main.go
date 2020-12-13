@@ -21,8 +21,8 @@ type ServerConfig struct {
 var (
 	config      = &ServerConfig{}
 	configFlag  = "adblockr.yml"
-	intervalMs  = 800
-	timeoutSecs = 5
+	intervalMs  = 500
+	timeoutSecs = 2
 	dbFlag      = "adblockr.db"
 	verbose     = false
 
@@ -57,8 +57,8 @@ var (
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	serveCmd.Flags().IntVarP(&intervalMs, "interval", "i", intervalMs, "DNS resolver interval (ms)")
-	serveCmd.Flags().IntVarP(&timeoutSecs, "timeout", "t", timeoutSecs, "DNS resolver timeout (seconds)")
+	serveCmd.Flags().IntVarP(&intervalMs, "interval", "i", intervalMs, "Nameserver switch interval (ms)")
+	serveCmd.Flags().IntVarP(&timeoutSecs, "timeout", "t", timeoutSecs, "Nameserver resolve timeout (seconds)")
 
 	initDbCmd.Flags().StringVarP(&dbFlag, "file", "f", dbFlag, "Path to database file")
 

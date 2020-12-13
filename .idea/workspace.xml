@@ -19,7 +19,7 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e1250cdd-e49d-4bc9-8529-cdada728d1a6" name="Default Changelist" comment="refactoring">
+    <list default="true" id="e1250cdd-e49d-4bc9-8529-cdada728d1a6" name="Default Changelist" comment="using subcommand">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmd/adblockr/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/adblockr/main.go" afterDir="false" />
     </list>
@@ -65,15 +65,16 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="refactoring" />
-    <option name="LAST_COMMIT_MESSAGE" value="refactoring" />
+    <MESSAGE value="using subcommand" />
+    <option name="LAST_COMMIT_MESSAGE" value="using subcommand" />
   </component>
   <component name="VgoProject">
     <integration-enabled>true</integration-enabled>
   </component>
   <component name="WindowStateProjectService">
-    <state x="560" y="266" key="Vcs.Push.Dialog.v2" timestamp="1607824766222">
+    <state x="560" y="266" key="Vcs.Push.Dialog.v2" timestamp="1607826826588">
       <screen x="0" y="25" width="1920" height="1009" />
     </state>
-    <state x="560" y="266" key="Vcs.Push.Dialog.v2/0.25.1920.1009@0.25.1920.1009" timestamp="1607824766222" />
+    <state x="560" y="266" key="Vcs.Push.Dialog.v2/0.25.1920.1009@0.25.1920.1009" timestamp="1607826826588" />
   </component>
 </project>
