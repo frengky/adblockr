@@ -34,12 +34,13 @@ type Server struct {
 	requestChan  chan dnsRequest
 	quit         chan struct{}
 	blacklist    DomainBucket
+	whitelist    DomainBucket
 	resolver     Resolver
 	tcpServer    *dns.Server
 	udpServer    *dns.Server
 }
 
-func NewServer(address string, resolver Resolver, blacklist DomainBucket) *Server {
+func NewServer(address string, resolver Resolver, blacklist DomainBucket, whitelist DomainBucket) *Server {
 	timeout := 3 * time.Second
 
 	srv := &Server{
@@ -50,6 +51,7 @@ func NewServer(address string, resolver Resolver, blacklist DomainBucket) *Serve
 		quit:         make(chan struct{}, 1),
 		resolver:     resolver,
 		blacklist:    blacklist,
+		whitelist:    whitelist,
 	}
 
 	return srv
@@ -144,10 +146,16 @@ loop:
 					"class":     dns.ClassToString[q.Qclass],
 				})
 
+				var isWhitelisted = s.whitelist.Has(qName)
 				var isBlacklisted = false
+
 				ipQuery := isIPQuery(q)
 				if ipQuery > 0 {
-					isBlacklisted = s.blacklist.Has(qName)
+
+					if !isWhitelisted {
+						isBlacklisted = s.blacklist.Has(qName)
+					}
+
 					if isBlacklisted {
 						m := new(dns.Msg)
 						m.SetReply(r)

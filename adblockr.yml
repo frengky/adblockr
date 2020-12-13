@@ -1,12 +1,21 @@
+# Bind DNS service to address
 listen_address: "127.0.0.1:5300"
 
+# List of upstream nameservers to be contacted when passed our blacklist check
 nameservers:
-  - "172.16.8.8:53"
+#  - "172.16.8.8:53"
   - "1.1.1.1:53"
+  - "8.8.8.8:53"
 
-blacklist:
-#  - https://justdomains.github.io/blocklists/lists/easylist-justdomains.txt
-#  - https://justdomains.github.io/blocklists/lists/easyprivacy-justdomains.txt
-  - https://justdomains.github.io/blocklists/lists/nocoin-justdomains.txt
+# List of blacklist source uri, format: https://some/blacklist.txt or file:///local/path/file.txt
+blacklist_sources:
+  - https://justdomains.github.io/blocklists/lists/easylist-justdomains.txt
+  - https://justdomains.github.io/blocklists/lists/easyprivacy-justdomains.txt
+  - https://v.firebog.net/hosts/Easyprivacy.txt
 
+# List of whitelisted domains, format: some.domain.com or *.domain.com
+whitelist_domains:
+  - "www.googleadservices.com"
+
+# Location of database file, if empty all blacklist will be stored on memory instead
 db_file: adblockr.db

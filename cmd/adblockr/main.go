@@ -15,7 +15,8 @@ import (
 type ServerConfig struct {
 	ListenAddress string   `yaml:"listen_address"`
 	Nameservers   []string `yaml:"nameservers,flow"`
-	Blacklist     []string `yaml:"blacklist,flow"`
+	Blacklist     []string `yaml:"blacklist_sources,flow"`
+	Whitelist     []string `yaml:"whitelist_domains,flow"`
 	DbFile        string   `yaml:"db_file"`
 }
 
@@ -118,13 +119,13 @@ func initBlacklistFromSources(sourceUri []string, store adblockr.DomainBucket) {
 
 	for _, uri := range sourceUri {
 		source++
-		log.Info("processing ", uri)
+		log.WithField("uri", uri).Info("processing sources")
 		count, err := store.Update(uri)
 		if err != nil {
-			log.WithError(err).Errorf("download failed")
+			log.WithField("uri", uri).WithError(err).Errorf("download failed")
 			continue
 		}
-		log.WithField("count", count).Info("download success")
+		log.WithField("uri", uri).WithField("count", count).Info("download success")
 		total = total + count
 	}
 
@@ -148,8 +149,11 @@ func runInitDb() {
 }
 
 func runServe() {
-	var blacklist adblockr.DomainBucket
-	var init = false
+	var (
+		blacklist adblockr.DomainBucket
+		whitelist = adblockr.NewMemDomainBucket()
+		init      = false
+	)
 
 	if config.DbFile == "" {
 		log.Info("starting DNS proxy with ad filter (using in-memory backend)")
@@ -169,13 +173,17 @@ func runServe() {
 		initBlacklistFromSources(config.Blacklist, blacklist)
 	}
 
+	for _, entry := range config.Whitelist {
+		whitelist.Put(entry, true)
+	}
+
 	var wg sync.WaitGroup
 
 	sigChan := make(chan os.Signal)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
 
 	resolver := adblockr.NewResolver(config.Nameservers, intervalMs, timeoutSecs)
-	server := adblockr.NewServer(config.ListenAddress, resolver, blacklist)
+	server := adblockr.NewServer(config.ListenAddress, resolver, blacklist, whitelist)
 
 	wg.Add(1)
 	go func() {
