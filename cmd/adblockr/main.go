@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/frengky/adblockr"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -19,12 +20,13 @@ type ServerConfig struct {
 }
 
 var (
-	config      = &ServerConfig{}
-	configFlag  = "adblockr.yml"
-	intervalMs  = 500
-	timeoutSecs = 2
-	dbFlag      = "adblockr.db"
-	verbose     = false
+	config          = &ServerConfig{}
+	configFlag      = "adblockr.yml"
+	intervalMs      = 500
+	timeoutSecs     = 2
+	dbFlag          = "adblockr.db"
+	verbose         = false
+	parseSourceFlag string
 
 	rootCmd = &cobra.Command{
 		Use:   "adblockr",
@@ -46,10 +48,19 @@ var (
 
 	initDbCmd = &cobra.Command{
 		Use:   "init-db",
-		Short: "Initialize blacklist database file",
-		Long:  "Initialize blacklist database file",
+		Short: "Initialize domain blacklist database file",
+		Long:  "Initialize domain blacklist database file",
 		Run: func(cmd *cobra.Command, args []string) {
 			runInitDb()
+		},
+	}
+
+	parseCmd = &cobra.Command{
+		Use:   "parse",
+		Short: "Parse a compatible host file format to domain list",
+		Long:  "Parse a compatible host file format to domain list",
+		Run: func(cmd *cobra.Command, args []string) {
+			runParse()
 		},
 	}
 )
@@ -62,9 +73,13 @@ func init() {
 
 	initDbCmd.Flags().StringVarP(&dbFlag, "file", "f", dbFlag, "Path to database file")
 
+	parseCmd.Flags().StringVarP(&parseSourceFlag, "source", "s", parseSourceFlag,
+		"Blacklist source URI, \"file///path/to.txt\" or \"http://some.where/blacklist.txt\"")
+	parseCmd.MarkFlagRequired("source")
+
 	rootCmd.PersistentFlags().StringVarP(&configFlag, "config", "c", configFlag, "Path to configuration file")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", verbose, "Verbose output")
-	rootCmd.AddCommand(serveCmd, initDbCmd)
+	rootCmd.AddCommand(serveCmd, initDbCmd, parseCmd)
 }
 
 func initConfig() {
@@ -95,8 +110,8 @@ func main() {
 	}
 }
 
-func initDomainBucket(sourceUri []string, store adblockr.DomainBucket) {
-	log.Info("initializing blacklist data, may take a while...")
+func initBlacklistFromSources(sourceUri []string, store adblockr.DomainBucket) {
+	log.Info("initializing blacklist database, may take a while...")
 
 	total := 0
 	source := 0
@@ -113,7 +128,7 @@ func initDomainBucket(sourceUri []string, store adblockr.DomainBucket) {
 		total = total + count
 	}
 
-	log.WithFields(log.Fields{"total": total, "source": source}).Info("blacklist data initialized")
+	log.WithFields(log.Fields{"total": total, "source": source}).Info("blacklist database initialized")
 }
 
 func runInitDb() {
@@ -129,7 +144,7 @@ func runInitDb() {
 		os.Exit(1)
 	}
 	defer blacklist.Close()
-	initDomainBucket(config.Blacklist, blacklist)
+	initBlacklistFromSources(config.Blacklist, blacklist)
 }
 
 func runServe() {
@@ -151,7 +166,7 @@ func runServe() {
 		defer blacklist.(*adblockr.DbDomainBucket).Close()
 	}
 	if init {
-		initDomainBucket(config.Blacklist, blacklist)
+		initBlacklistFromSources(config.Blacklist, blacklist)
 	}
 
 	var wg sync.WaitGroup
@@ -171,6 +186,36 @@ func runServe() {
 	<-sigChan
 	server.Shutdown()
 	wg.Wait()
+	os.Exit(0)
+}
+
+func runParse() {
+	if parseSourceFlag == "" {
+		log.Error("No file specified")
+		os.Exit(1)
+	}
+
+	logCtx := log.WithField("uri", parseSourceFlag)
+
+	r, err := adblockr.OpenResource(parseSourceFlag)
+	if err != nil {
+		logCtx.WithError(err).Error("unable to open uri")
+		os.Exit(1)
+	}
+	defer r.Close()
+
+	fmt.Fprintln(os.Stdout, fmt.Sprintf("# %s", parseSourceFlag))
+	count, err := adblockr.ParseLine(r, func(line string) bool {
+		fmt.Fprintln(os.Stdout, line)
+		return true
+	})
+	fmt.Fprintln(os.Stdout, fmt.Sprintf("# Total %d", count))
+
+	if err != nil {
+		logCtx.WithError(err).Error("error while reading file")
+		os.Exit(1)
+	}
+
 	os.Exit(0)
 }
 

@@ -80,7 +80,7 @@ func (m *MemDomainBucket) Forget(key string) {
 }
 
 func (m *MemDomainBucket) Update(uri string) (int, error) {
-	r, err := getDomainResource(uri)
+	r, err := OpenResource(uri)
 	if err != nil {
 		return 0, err
 	}

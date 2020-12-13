@@ -1,6 +1,7 @@
 package adblockr
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,7 +19,7 @@ type DomainBucket interface {
 	Update(uri string) (int, error)
 }
 
-func getDomainResource(uri string) (io.ReadCloser, error) {
+func OpenResource(uri string) (io.ReadCloser, error) {
 	srcUrl, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
@@ -49,4 +50,28 @@ func getDomainResource(uri string) (io.ReadCloser, error) {
 	}
 
 	return resp.Body, nil
+}
+
+func ParseLine(r io.Reader, handler func(line string) bool) (int, error) {
+	count := 0
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.Split(line, "#")[0]
+		line = strings.TrimSpace(line)
+
+		if len(line) > 0 {
+			fields := strings.Fields(line)
+			if len(fields) > 1 {
+				line = fields[1]
+			} else {
+				line = fields[0]
+			}
+			if handler(line) {
+				count++
+			}
+		}
+	}
+
+	return count, scanner.Err()
 }

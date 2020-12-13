@@ -102,7 +102,7 @@ func (s *DbDomainBucket) Forget(key string) {
 }
 
 func (s *DbDomainBucket) Update(uri string) (int, error) {
-	r, err := getDomainResource(uri)
+	r, err := OpenResource(uri)
 	if err != nil {
 		return 0, err
 	}
