@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/miekg/dns"
 	log "github.com/sirupsen/logrus"
+	"strings"
 	"sync"
 	"time"
 )
@@ -17,6 +18,7 @@ type defaultResolver struct {
 	interval    int
 	timeout     int
 	client      *dns.Client
+	tlsClient   *dns.Client
 }
 
 func NewResolver(nameservers []string, intervalMs int, timeoutMs int) Resolver {
@@ -29,6 +31,11 @@ func NewResolver(nameservers []string, intervalMs int, timeoutMs int) Resolver {
 			ReadTimeout:  time.Duration(timeoutMs) * time.Millisecond,
 			WriteTimeout: time.Duration(timeoutMs) * time.Millisecond,
 		},
+		tlsClient: &dns.Client{
+			Net:          "tcp4-tls",
+			ReadTimeout:  time.Duration(timeoutMs) * time.Millisecond,
+			WriteTimeout: time.Duration(timeoutMs) * time.Millisecond,
+		},
 	}
 }
 
@@ -38,8 +45,16 @@ func (r *defaultResolver) Lookup(net string, req *dns.Msg) (*dns.Msg, error) {
 	res := make(chan *dns.Msg, 1)
 	var wg sync.WaitGroup
 	L := func(nameserver string) {
+		var (
+			rr  *dns.Msg
+			err error
+		)
 		defer wg.Done()
-		rr, _, err := r.client.Exchange(req, nameserver)
+		if strings.HasSuffix(nameserver, ":853") {
+			rr, _, err = r.tlsClient.Exchange(req, nameserver)
+		} else {
+			rr, _, err = r.client.Exchange(req, nameserver)
+		}
 		if err != nil {
 			log.WithField("ns", nameserver).WithError(err).Error("error while resolving from upstream")
 			return

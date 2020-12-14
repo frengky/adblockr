@@ -3,9 +3,9 @@ listen_address: "127.0.0.1:5300"
 
 # List of upstream nameservers to be contacted when passed our blacklist check
 nameservers:
-#  - "172.16.8.8:53"
+  - "8.8.8.8:853"
+  - "9.9.9.9:853"
   - "1.1.1.1:53"
-  - "8.8.8.8:53"
 
 # List of blacklist source uri, format: https://some/blacklist.txt or file:///local/path/file.txt
 blacklist_sources:

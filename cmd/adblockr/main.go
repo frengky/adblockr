@@ -23,7 +23,7 @@ type ServerConfig struct {
 var (
 	config             = &ServerConfig{}
 	configFlag         = "adblockr.yml"
-	resolverIntervalMs = 600
+	resolverIntervalMs = 250
 	dnsTimeoutMs       = 600
 	httpTimeoutSecs    = 10
 	dbFlag             = "adblockr.db"
