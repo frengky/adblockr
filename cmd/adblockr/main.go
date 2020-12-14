@@ -29,6 +29,7 @@ var (
 	dbFlag             = "adblockr.db"
 	verbose            = false
 	parseSourceFlag    string
+	dohUrl             string
 
 	rootCmd = &cobra.Command{
 		Use:   "adblockr",
@@ -71,6 +72,7 @@ func init() {
 	cobra.OnInitialize(onInit)
 
 	serveCmd.Flags().IntVar(&resolverIntervalMs, "nameserver-interval", resolverIntervalMs, "Nameserver switch interval (ms)")
+	serveCmd.Flags().StringVar(&dohUrl, "doh", dohUrl, "Enable DNS over HTTPS, example: \"https://dns.google/dns-query\"")
 
 	initDbCmd.Flags().StringVarP(&dbFlag, "file", "f", dbFlag, "Path to database file")
 
@@ -198,7 +200,14 @@ func runServe() {
 	sigChan := make(chan os.Signal)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
 
-	resolver := adblockr.NewResolver(config.Nameservers, resolverIntervalMs, dnsTimeoutMs)
+	var resolver adblockr.Resolver
+
+	if dohUrl != "" {
+		httpClient := adblockr.NewHttpClient(config.Nameservers[0], dnsTimeoutMs, 1000)
+		resolver = adblockr.NewDohResolver(dohUrl, httpClient)
+	} else {
+		resolver = adblockr.NewResolver(config.Nameservers, resolverIntervalMs, dnsTimeoutMs)
+	}
 	server := adblockr.NewServer(config.ListenAddress, resolver, blacklist, whitelist)
 
 	wg.Add(1)

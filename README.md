@@ -47,15 +47,23 @@ Running the DNS proxy verbosely with a configuration file:
 ```console
 $ adblockr serve -v -c /path/to/adblockr.yml
 ```
-A database contains blacklisted domain `adblockr.db` will be created when its running for the first time, or you can also manually initialize the database (downloading all blacklist sources from `adblockr.yml`) using this command:
+
+Enable **DNS over HTTPS** using Google's DNS
+```console
+$ adblockr serve -v --doh https://dns.google/dns-query
+```
+
+for more available commands, please see `adblockr --help`
+
+## Blacklist database
+A database contains blacklisted domain `adblockr.db` will be created when running for the first time, or you can also manually initialize the database (downloading all blacklist sources from `adblockr.yml`) using this command:
 ```console
 $ adblockr init-db
 ```
 > The `adblockr.db` blacklist database file will be created in the current working directory. 
 > Please only initialize the database when server is **not** running.
 
-for more available commands, please see `adblockr --help`
 
 ## Tips
 
-This DNS proxy server is created mainly for blacklisting/whitelisting domain purposes, so it does not cache at all. For more privacy and protections, i would recommend to run this server together with [unbound](https://github.com/NLnetLabs/unbound) as upstream caching DNS resolver that fully support **DNS over HTTPS** and **DNS over TLS** (DoH/DoT).
+This DNS proxy server is created mainly for blacklisting/whitelisting domain purposes, does not provide DNS caching. For more privacy and performance, it is recommended to run this server together with [unbound](https://github.com/NLnetLabs/unbound) as upstream caching DNS resolver that fully support **DNS over HTTPS** and **DNS over TLS** (DoH/DoT).
