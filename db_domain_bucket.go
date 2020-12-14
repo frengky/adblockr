@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gobwas/glob"
 	"github.com/joyrexus/buckets"
+	"io"
 	"strconv"
 	"strings"
 	"sync"
@@ -100,19 +101,13 @@ func (s *DbDomainBucket) Forget(key string) {
 	}
 }
 
-func (s *DbDomainBucket) Update(uri string) (int, error) {
-	r, err := OpenResource(uri)
-	if err != nil {
-		return 0, err
-	}
-
+func (s *DbDomainBucket) Update(list io.Reader) (int, error) {
 	defaultValue := []byte(strconv.FormatBool(true))
 	var domains, patterns []struct {
 		Key, Value []byte
 	}
 
-	var count int
-	count, err = ParseLine(r, func(line string) bool {
+	count, err := ParseLine(list, func(line string) bool {
 		if strings.ContainsAny(line, globChars) {
 			g, err := glob.Compile(line)
 			if err == nil {
@@ -134,7 +129,6 @@ func (s *DbDomainBucket) Update(uri string) (int, error) {
 		}
 		return false
 	})
-	r.Close()
 
 	if err != nil {
 		return 0, err

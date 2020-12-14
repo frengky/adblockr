@@ -16,31 +16,30 @@ type defaultResolver struct {
 	nameservers []string
 	interval    int
 	timeout     int
+	client      *dns.Client
 }
 
-func NewResolver(nameservers []string, intervalMs int, timeoutSecs int) Resolver {
+func NewResolver(nameservers []string, intervalMs int, timeoutMs int) Resolver {
 	return &defaultResolver{
 		nameservers: nameservers,
 		interval:    intervalMs,
-		timeout:     timeoutSecs,
+		timeout:     timeoutMs,
+		client: &dns.Client{
+			Net:          "udp",
+			ReadTimeout:  time.Duration(timeoutMs) * time.Millisecond,
+			WriteTimeout: time.Duration(timeoutMs) * time.Millisecond,
+		},
 	}
 }
 
 func (r *defaultResolver) Lookup(net string, req *dns.Msg) (*dns.Msg, error) {
-
-	c := &dns.Client{
-		Net:          net,
-		ReadTimeout:  time.Duration(r.timeout) * time.Second,
-		WriteTimeout: time.Duration(r.timeout) * time.Second,
-	}
-
 	qName := req.Question[0].Name
 
 	res := make(chan *dns.Msg, 1)
 	var wg sync.WaitGroup
 	L := func(nameserver string) {
 		defer wg.Done()
-		rr, _, err := c.Exchange(req, nameserver)
+		rr, _, err := r.client.Exchange(req, nameserver)
 		if err != nil {
 			log.WithField("ns", nameserver).WithError(err).Error("error while resolving from upstream")
 			return

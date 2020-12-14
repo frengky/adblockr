@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,10 +17,10 @@ type DomainBucket interface {
 	Put(key string, value bool) error
 	Has(domain string) bool
 	Forget(key string)
-	Update(uri string) (int, error)
+	Update(list io.Reader) (int, error)
 }
 
-func OpenResource(uri string) (io.ReadCloser, error) {
+func OpenResource(uri string, httpClient *http.Client) (io.ReadCloser, error) {
 	srcUrl, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
@@ -33,18 +34,20 @@ func OpenResource(uri string) (io.ReadCloser, error) {
 		return file, nil
 	}
 
-	resp, err := http.Get(uri)
+	resp, err := httpClient.Get(uri)
 	if err != nil {
 		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		io.Copy(ioutil.Discard, resp.Body)
 		resp.Body.Close()
 		return nil, fmt.Errorf("HTTP %d %s", resp.StatusCode, resp.Status)
 	}
 
 	contentType := resp.Header.Get("Content-Type")
 	if !strings.Contains(contentType, "text/plain") {
+		io.Copy(ioutil.Discard, resp.Body)
 		resp.Body.Close()
 		return nil, fmt.Errorf("invalid content type: %s", contentType)
 	}

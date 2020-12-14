@@ -21,13 +21,14 @@ type ServerConfig struct {
 }
 
 var (
-	config          = &ServerConfig{}
-	configFlag      = "adblockr.yml"
-	intervalMs      = 500
-	timeoutSecs     = 2
-	dbFlag          = "adblockr.db"
-	verbose         = false
-	parseSourceFlag string
+	config             = &ServerConfig{}
+	configFlag         = "adblockr.yml"
+	resolverIntervalMs = 600
+	dnsTimeoutMs       = 600
+	httpTimeoutSecs    = 10
+	dbFlag             = "adblockr.db"
+	verbose            = false
+	parseSourceFlag    string
 
 	rootCmd = &cobra.Command{
 		Use:   "adblockr",
@@ -67,10 +68,9 @@ var (
 )
 
 func init() {
-	cobra.OnInitialize(initConfig)
+	cobra.OnInitialize(onInit)
 
-	serveCmd.Flags().IntVarP(&intervalMs, "interval", "i", intervalMs, "Nameserver switch interval (ms)")
-	serveCmd.Flags().IntVarP(&timeoutSecs, "timeout", "t", timeoutSecs, "Nameserver resolve timeout (seconds)")
+	serveCmd.Flags().IntVar(&resolverIntervalMs, "nameserver-interval", resolverIntervalMs, "Nameserver switch interval (ms)")
 
 	initDbCmd.Flags().StringVarP(&dbFlag, "file", "f", dbFlag, "Path to database file")
 
@@ -80,10 +80,12 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&configFlag, "config", "c", configFlag, "Path to configuration file")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", verbose, "Verbose output")
+	rootCmd.PersistentFlags().IntVar(&httpTimeoutSecs, "http-timeout", httpTimeoutSecs, "HTTP client timeout (seconds)")
+	rootCmd.PersistentFlags().IntVarP(&dnsTimeoutMs, "dns-timeout", "t", dnsTimeoutMs, "DNS timeout (ms)")
 	rootCmd.AddCommand(serveCmd, initDbCmd, parseCmd)
 }
 
-func initConfig() {
+func onInit() {
 	if verbose {
 		log.SetLevel(log.DebugLevel)
 	}
@@ -103,6 +105,11 @@ func initConfig() {
 		logCtx.WithError(err).Error("invalid configuration file format")
 		os.Exit(1)
 	}
+
+	if len(config.Nameservers) < 1 {
+		logCtx.Error("no nameservers found on configuration file")
+		os.Exit(1)
+	}
 }
 
 func main() {
@@ -114,19 +121,28 @@ func main() {
 func initBlacklistFromSources(sourceUri []string, store adblockr.DomainBucket) {
 	log.Info("initializing blacklist database, may take a while...")
 
+	httpClient := adblockr.NewHttpClient(config.Nameservers[0], dnsTimeoutMs, httpTimeoutSecs)
 	total := 0
 	source := 0
 
 	for _, uri := range sourceUri {
 		source++
 		log.WithField("uri", uri).Info("processing sources")
-		count, err := store.Update(uri)
-		if err != nil {
-			log.WithField("uri", uri).WithError(err).Errorf("download failed")
-			continue
-		}
-		log.WithField("uri", uri).WithField("count", count).Info("download success")
-		total = total + count
+		func() {
+			list, err := adblockr.OpenResource(uri, httpClient)
+			if err != nil {
+				return
+			}
+			defer list.Close()
+
+			count, err := store.Update(list)
+			if err != nil {
+				log.WithField("uri", uri).WithError(err).Errorf("download failed")
+				return
+			}
+			log.WithField("uri", uri).WithField("count", count).Info("download success")
+			total = total + count
+		}()
 	}
 
 	log.WithFields(log.Fields{"total": total, "source": source}).Info("blacklist database initialized")
@@ -182,7 +198,7 @@ func runServe() {
 	sigChan := make(chan os.Signal)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
 
-	resolver := adblockr.NewResolver(config.Nameservers, intervalMs, timeoutSecs)
+	resolver := adblockr.NewResolver(config.Nameservers, resolverIntervalMs, dnsTimeoutMs)
 	server := adblockr.NewServer(config.ListenAddress, resolver, blacklist, whitelist)
 
 	wg.Add(1)
@@ -205,7 +221,8 @@ func runParse() {
 
 	logCtx := log.WithField("uri", parseSourceFlag)
 
-	r, err := adblockr.OpenResource(parseSourceFlag)
+	httpClient := adblockr.NewHttpClient(config.Nameservers[0], dnsTimeoutMs, httpTimeoutSecs)
+	r, err := adblockr.OpenResource(parseSourceFlag, httpClient)
 	if err != nil {
 		logCtx.WithError(err).Error("unable to open uri")
 		os.Exit(1)

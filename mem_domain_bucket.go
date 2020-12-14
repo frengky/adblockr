@@ -2,6 +2,7 @@ package adblockr
 
 import (
 	"github.com/gobwas/glob"
+	"io"
 	"strings"
 	"sync"
 )
@@ -78,15 +79,8 @@ func (m *MemDomainBucket) Forget(key string) {
 	}
 }
 
-func (m *MemDomainBucket) Update(uri string) (int, error) {
-	r, err := OpenResource(uri)
-	if err != nil {
-		return 0, err
-	}
-	defer r.Close()
-
-	var count int
-	count, err = ParseLine(r, func(line string) bool {
+func (m *MemDomainBucket) Update(list io.Reader) (int, error) {
+	count, err := ParseLine(list, func(line string) bool {
 		if err := m.putNoLock(line, true); err == nil {
 			return true
 		}
