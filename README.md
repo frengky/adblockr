@@ -24,10 +24,9 @@ listen_address: "127.0.0.1:5300"
   
 # List of upstream nameservers to be contacted when passed our blacklist check  
 nameservers:  
-#  - "172.16.8.8:53"  
-  - "1.1.1.1:53"  
-  - "8.8.8.8:53"  
-  
+  - "8.8.8.8:853"
+  - "9.9.9.9:853"
+
 # List of blacklist source uri, format: https://some/blacklist.txt or file:///local/path/file.txt  
 blacklist_sources:  
   - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
@@ -48,15 +47,27 @@ Running the DNS proxy verbosely with a configuration file:
 $ adblockr serve -v -c /path/to/adblockr.yml
 ```
 
-Enable **DNS over HTTPS** using Google's DNS
+## Privacy options
+
+Enable **DNS over TLS** via `adblockr.yml` configuration file:
+```yml
+nameservers:  
+  - "8.8.8.8:853"
+  - "9.9.9.9:853"
+```
+> By using upstream nameserver via port `:853`, all DNS queries will be secured using TLS connections.
+
+Enable **DNS over HTTPS** via command line flags
 ```console
 $ adblockr serve -v --doh https://dns.google/dns-query
 ```
+> Using this options cause all DNS queries will be forwarded via HTTPS.
+> The upstream `nameservers` in the configuration files will be ignored.
 
 for more available commands, please see `adblockr --help`
 
 ## Blacklist database
-A database contains blacklisted domain `adblockr.db` will be created when running for the first time, or you can also manually initialize the database (downloading all blacklist sources from `adblockr.yml`) using this command:
+A database contains blacklisted domain names `adblockr.db` will be created when running for the first time, or you can also manually initialize the database (downloading all blacklist sources from `adblockr.yml`) using this command:
 ```console
 $ adblockr init-db
 ```
