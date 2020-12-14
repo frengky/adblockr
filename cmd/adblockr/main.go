@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 )
 
 type ServerConfig struct {
@@ -21,23 +22,22 @@ type ServerConfig struct {
 }
 
 var (
-	config             = &ServerConfig{}
-	configFlag         = "adblockr.yml"
-	resolverIntervalMs = 250
-	dnsTimeoutMs       = 600
-	httpTimeoutSecs    = 10
-	dbFlag             = "adblockr.db"
-	verbose            = false
-	parseSourceFlag    string
-	dohUrl             string
+	config              = &ServerConfig{}
+	configFlag          = "adblockr.yml"
+	resolverIntervalMs  = 250
+	dnsTimeoutMs        = 600
+	httpTimeoutSecs     = 10
+	dbFlag              = "adblockr.db"
+	verbose             = false
+	parseSourceFlag     string
+	dohUrl              string
+	cacheExpireSecs     = 3600
+	cleanUpIntervalSecs = 300
 
 	rootCmd = &cobra.Command{
 		Use:   "adblockr",
 		Short: "High performance DNS proxy with ad filter",
 		Long:  "High performance DNS proxy with ad filter written in Go",
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-
-		},
 	}
 
 	serveCmd = &cobra.Command{
@@ -71,7 +71,7 @@ var (
 func init() {
 	cobra.OnInitialize(onInit)
 
-	serveCmd.Flags().IntVar(&resolverIntervalMs, "nameserver-interval", resolverIntervalMs, "Nameserver switch interval (ms)")
+	serveCmd.Flags().IntVarP(&resolverIntervalMs, "nameserver-interval", "n", resolverIntervalMs, "Nameserver switch interval in ms")
 	serveCmd.Flags().StringVar(&dohUrl, "doh", dohUrl, "Enable DNS over HTTPS, example: \"https://dns.google/dns-query\"")
 
 	initDbCmd.Flags().StringVarP(&dbFlag, "file", "f", dbFlag, "Path to database file")
@@ -82,8 +82,10 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&configFlag, "config", "c", configFlag, "Path to configuration file")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", verbose, "Verbose output")
-	rootCmd.PersistentFlags().IntVar(&httpTimeoutSecs, "http-timeout", httpTimeoutSecs, "HTTP client timeout (seconds)")
-	rootCmd.PersistentFlags().IntVarP(&dnsTimeoutMs, "dns-timeout", "t", dnsTimeoutMs, "DNS timeout (ms)")
+	rootCmd.PersistentFlags().IntVar(&httpTimeoutSecs, "http-timeout", httpTimeoutSecs, "HTTP request timeout in sec")
+	rootCmd.PersistentFlags().IntVarP(&dnsTimeoutMs, "dns-timeout", "t", dnsTimeoutMs, "DNS resolver timeout in ms")
+	rootCmd.PersistentFlags().IntVarP(&cacheExpireSecs, "cache-expire", "x", cacheExpireSecs, "DNS cache duration in sec")
+	rootCmd.PersistentFlags().IntVarP(&cleanUpIntervalSecs, "cleanup-interval", "i", cleanUpIntervalSecs, "DNS cache cleanup interval in sec")
 	rootCmd.AddCommand(serveCmd, initDbCmd, parseCmd)
 }
 
@@ -208,7 +210,10 @@ func runServe() {
 	} else {
 		resolver = adblockr.NewResolver(config.Nameservers, resolverIntervalMs, dnsTimeoutMs)
 	}
-	server := adblockr.NewServer(config.ListenAddress, resolver, blacklist, whitelist)
+
+	cacheExpire := time.Duration(cacheExpireSecs) * time.Second
+	cleanUpInterval := time.Duration(cleanUpIntervalSecs) * time.Second
+	server := adblockr.NewServer(config.ListenAddress, resolver, blacklist, whitelist, cacheExpire, cleanUpInterval)
 
 	wg.Add(1)
 	go func() {

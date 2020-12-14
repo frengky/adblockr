@@ -2,6 +2,7 @@ package adblockr
 
 import (
 	"github.com/miekg/dns"
+	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
 	"net"
 	"sync"
@@ -28,19 +29,23 @@ type dnsRequest struct {
 }
 
 type Server struct {
-	address      string
-	readTimeout  time.Duration
-	writeTimeout time.Duration
-	requestChan  chan dnsRequest
-	quit         chan struct{}
-	blacklist    DomainBucket
-	whitelist    DomainBucket
-	resolver     Resolver
-	tcpServer    *dns.Server
-	udpServer    *dns.Server
+	address         string
+	readTimeout     time.Duration
+	writeTimeout    time.Duration
+	requestChan     chan dnsRequest
+	quit            chan struct{}
+	blacklist       DomainBucket
+	whitelist       DomainBucket
+	resolver        Resolver
+	tcpServer       *dns.Server
+	udpServer       *dns.Server
+	cache           *cache.Cache
+	cacheExpire     time.Duration
+	cleanUpInterval time.Duration
 }
 
-func NewServer(address string, resolver Resolver, blacklist DomainBucket, whitelist DomainBucket) *Server {
+func NewServer(address string, resolver Resolver, blacklist DomainBucket, whitelist DomainBucket,
+	cacheExpire time.Duration, cleanUpInterval time.Duration) *Server {
 	timeout := 3 * time.Second
 
 	srv := &Server{
@@ -52,6 +57,7 @@ func NewServer(address string, resolver Resolver, blacklist DomainBucket, whitel
 		resolver:     resolver,
 		blacklist:    blacklist,
 		whitelist:    whitelist,
+		cache:        cache.New(cacheExpire, cleanUpInterval),
 	}
 
 	return srv
@@ -137,14 +143,26 @@ loop:
 				}
 
 				qName := unFqdn(q.Name)
+				qType := dns.TypeToString[q.Qtype]
+				qClass := dns.ClassToString[q.Qclass]
 
 				logCtx := log.WithFields(log.Fields{
 					"net":       network,
 					"client-ip": clientIP,
 					"name":      q.Name,
-					"type":      dns.TypeToString[q.Qtype],
-					"class":     dns.ClassToString[q.Qclass],
+					"type":      qType,
+					"class":     qClass,
 				})
+
+				question := qName + " " + qType + " " + qClass
+				c, found := s.cache.Get(question)
+				if found {
+					mc := c.(*dns.Msg)
+					msg := mc
+					msg.Id = r.Id
+					s.writeReply(w, msg)
+					return
+				}
 
 				var isWhitelisted = s.whitelist.Has(qName)
 				var isBlacklisted = false
@@ -189,6 +207,7 @@ loop:
 						}
 						s.writeReply(w, m)
 						logCtx.Warn("dns query rejected")
+						s.cache.Add(question, m, s.cacheExpire)
 						return
 					}
 				}
@@ -203,9 +222,26 @@ loop:
 				s.writeReply(w, result)
 				logCtx.Debug("dns query success")
 
+				var cacheTtl uint32 = 600
+				for _, answer := range result.Answer {
+					ttl := answer.Header().Ttl
+					if ttl > 0 && ttl < cacheTtl {
+						cacheTtl = ttl
+					}
+				}
+				cacheDuration := time.Duration(cacheTtl) * time.Second
+				if cacheDuration.Milliseconds() > s.cacheExpire.Milliseconds() {
+					cacheDuration = s.cacheExpire
+				}
+				s.cache.Add(question, result, cacheDuration)
+
 			}(req.network, req.w, req.r)
 		}
 	}
+}
+
+func (s *Server) addToCache(key string, m *dns.Msg) {
+
 }
 
 func (s *Server) handleTCP(w dns.ResponseWriter, r *dns.Msg) {

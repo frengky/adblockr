@@ -77,4 +77,4 @@ $ adblockr init-db
 
 ## Tips
 
-This DNS proxy server is created mainly for blacklisting/whitelisting domain purposes, does not provide DNS caching. For more privacy and performance, it is recommended to run this server together with [unbound](https://github.com/NLnetLabs/unbound) as upstream caching DNS resolver that fully support **DNS over HTTPS** and **DNS over TLS** (DoH/DoT).
+This DNS proxy server is created mainly for blacklisting/whitelisting domain purposes with basic caching mechanism. For an even better performance, it is recommended to run [unbound](https://github.com/NLnetLabs/unbound) as the upstream caching DNS resolver.
