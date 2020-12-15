@@ -240,10 +240,6 @@ loop:
 	}
 }
 
-func (s *Server) addToCache(key string, m *dns.Msg) {
-
-}
-
 func (s *Server) handleTCP(w dns.ResponseWriter, r *dns.Msg) {
 	s.requestChan <- dnsRequest{network: "tcp", w: w, r: r}
 }

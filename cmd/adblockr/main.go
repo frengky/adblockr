@@ -93,6 +93,9 @@ func onInit() {
 	if verbose {
 		log.SetLevel(log.DebugLevel)
 	}
+	log.SetFormatter(&log.TextFormatter{
+		DisableColors: true,
+	})
 
 	logCtx := log.WithField("config", configFlag)
 
